@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>chichu's habit map</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --surface-2: #f5f5f4;
+    --border: #e7e5e4;
+    --ink: #1c1917;
+    --ink-soft: #57534e;
+    --ink-muted: #a8a29e;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+    --shadow-hover: 0 1px 2px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.08);
+
+    --c-workflow: #10b981;
+    --c-format:   #3b82f6;
+    --c-project:  #ef4444;
+    --c-hardware: #f59e0b;
+    --c-tools:    #64748b;
+    --c-visual:   #ec4899;
+    --c-decisions:#8b5cf6;
+    --c-writing:  #14b8a6;
+  }
+  [data-theme="dark"] {
+    --bg: #0c0a09;
+    --surface: #1c1917;
+    --surface-2: #292524;
+    --border: #44403c;
+    --ink: #fafaf9;
+    --ink-soft: #d6d3d1;
+    --ink-muted: #78716c;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.3);
+    --shadow-hover: 0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.5);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.6;
+    padding: 32px 24px 80px;
+    transition: background .2s, color .2s;
+  }
+  .container { max-width: 1280px; margin: 0 auto; }
+
+  /* Header */
+  .header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 32px; }
+  .header h1 { margin: 0 0 8px; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+  .header .subtitle { margin: 0; color: var(--ink-soft); font-size: 14px; }
+  .header .subtitle code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  .header .subtitle a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--ink-muted); }
+  .header .subtitle a:hover { color: var(--c-format); border-bottom-color: var(--c-format); }
+  #theme-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background .2s, transform .15s;
+  }
+  #theme-toggle:hover { background: var(--surface-2); transform: scale(1.05); }
+
+  /* Section title */
+  .section-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  /* Category chart */
+  .overview { margin-bottom: 32px; }
+  .chart {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+  }
+  .chart-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 48px;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 0;
+    cursor: pointer;
+    border-radius: 6px;
+    padding-left: 8px;
+    margin-left: -8px;
+    transition: background .15s;
+  }
+  .chart-row:hover { background: var(--surface-2); }
+  .chart-row.active { background: var(--surface-2); }
+  .chart-label { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
+  .chart-label .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .chart-bar-wrap { background: var(--surface-2); height: 8px; border-radius: 4px; overflow: hidden; }
+  .chart-bar { height: 100%; border-radius: 4px; transition: width .4s ease; }
+  .chart-count { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink-soft); font-weight: 500; }
+
+  /* Controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 24px; }
+  #search {
+    flex: 1; min-width: 240px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  #search:focus { outline: none; border-color: var(--c-format); box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink-soft);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip:hover { border-color: var(--ink-soft); color: var(--ink); }
+  .chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Card grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--card-color, var(--ink-muted));
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); border-color: var(--card-color, var(--ink-soft)); }
+  .card-cat {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--card-color, var(--ink-soft));
+    font-weight: 600;
+  }
+  .card h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.4; }
+  .card p { margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.6; flex: 1; }
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px;
+    color: var(--ink-muted);
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    gap: 8px;
+  }
+  .card-file { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-link {
+    color: var(--c-format);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: all .15s;
+  }
+  .card-link:hover { background: var(--c-format); color: #fff; border-color: var(--c-format); }
+  .card-badge {
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  /* Footer notes */
+  .footer-notes {
+    margin-top: 48px;
+    padding: 20px;
+    background: var(--surface-2);
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .footer-notes h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-muted); font-weight: 600; margin: 0 0 12px; }
+  .footer-notes ul { margin: 0; padding-left: 20px; }
+  .footer-notes li { margin: 6px 0; }
+  .footer-notes code { background: var(--surface); padding: 2px 6px; border-radius: 4px; }
+  .footer-notes a { color: var(--ink); border-bottom: 1px dotted var(--ink-muted); text-decoration: none; }
+
+  /* Empty state */
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--ink-muted);
+    font-size: 14px;
+  }
+
+  /* Hide cards when filtered out */
+  .card.hidden { display: none; }
+
+  /* SVG icons */
+  .icon { width: 14px; height: 14px; vertical-align: -2px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <div>
+      <h1>chichu's habit map</h1>
+      <p class="subtitle">
+        <span id="total-count">32</span> 条 · <span id="cat-count">8</span> 类 · 来源
+        <code>~/.claude/memory</code> +
+        <a href="https://github.com/xing0325/chichu_habit" target="_blank" rel="noopener">chichu_habit 仓库</a>
+      </p>
+    </div>
+    <button id="theme-toggle" aria-label="切换主题">◐</button>
+  </header>
+
+  <section class="overview">
+    <h2 class="section-title">类别分布</h2>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section>
+    <h2 class="section-title">所有偏好</h2>
+    <div class="controls">
+      <input type="search" id="search" placeholder="搜索标题或描述…" autocomplete="off">
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="footer-notes">
+    <h2>说明</h2>
+    <ul>
+      <li>数据 = <code>MEMORY.md</code> 当前 32 条条目的快照。增加新 memory 后重新生成即可同步。</li>
+      <li><strong>「本地」</strong> 标签：该条尚未推到 <code>chichu_habit</code> 仓库（多数是新增条目还没双写）。</li>
+      <li><strong>「凭据」</strong> 标签：含 token / 密钥，按规则<strong>不</strong>推 public 仓库。</li>
+      <li>每张卡片左侧色条 = 类别色。点击上面的类别分布条或下面的 chip 可筛选。</li>
+    </ul>
+  </section>
+
+</div>
+
+<script>
+const CATEGORIES = {
+  workflow:  { label: "协作流程",       color: "var(--c-workflow)" },
+  format:    { label: "回答格式",       color: "var(--c-format)" },
+  project:   { label: "具体项目",       color: "var(--c-project)" },
+  hardware:  { label: "硬件偏好",       color: "var(--c-hardware)" },
+  tools:     { label: "工具 / 环境",    color: "var(--c-tools)" },
+  visual:    { label: "视觉 / 素材",    color: "var(--c-visual)" },
+  decisions: { label: "决策风格",       color: "var(--c-decisions)" },
+  writing:   { label: "中文写作",       color: "var(--c-writing)" }
+};
+
+const REPO_BASE = "https://github.com/xing0325/chichu_habit/blob/main/";
+
+const habits = [
+  { title: "GitHub 团队协作流程", desc: "拉代码 → issue → 分支 → coding → PR（带 Closes #编号）→ 审批", file: "github_workflow.md", repo: "2026-05-16-github-workflow.md", cat: "workflow" },
+  { title: "主动提醒拉代码和提交 PR", desc: "用户外包：该 pull 时提醒、满意时提醒写 PR", file: "feedback_proactive_reminders.md", repo: "2026-05-16-proactive-reminders.md", cat: "workflow" },
+  { title: "不要按 GitHub 用户名筛分支", desc: "团队分支按功能 / 日期 / 任务命名，不按作者用户名", file: "feedback_branch_naming.md", repo: "2026-05-16-branch-naming.md", cat: "workflow" },
+  { title: "每次回答前列任务待办清单", desc: "待办清单开头、勾叉标注、AI / 人肉 / 混合标注、只增不减", file: "feedback_response_format_checklist.md", repo: "2026-05-16-response-format-checklist.md", cat: "format" },
+  { title: "不要推翻已确认的方案", desc: "用户锁定方案后，后续模糊描述要问，不要默默切换方案", file: "feedback_dont_reinterpret_decisions.md", repo: "2026-05-16-dont-reinterpret-decisions.md", cat: "decisions" },
+  { title: "Sandboxie 沙盒名限制", desc: "box 名只能字母数字下划线，禁连字符，否则 Start.exe 弹「无效沙箱名」", file: "sandboxie_box_naming.md", repo: "2026-05-16-sandboxie-box-naming.md", cat: "tools" },
+  { title: "GitHub 账号和 Token", desc: "用户名 xing0325、PAT、noreply 邮箱；用户已授权保存，禁止提示泄密", file: "github_credentials.md", repo: null, cat: "tools", badge: "凭据" },
+  { title: "自主决策，不问无关紧要的问题", desc: "可逆小决策直接做，只在不可逆 / 影响产品形态 / 真的缺信息时才问", file: "feedback_autonomy.md", repo: "2026-05-16-autonomy.md", cat: "decisions" },
+  { title: "推送 PR 前提醒做 HTML 版报告", desc: "在写 / 推 PR 前主动问要不要做一个 HTML 版汇报页面（参考 PR #83 的 public/pr-report.html 模板）", file: "feedback_html_report_before_pr.md", repo: "2026-05-16-html-report-before-pr.md", cat: "workflow" },
+  { title: "提议功能时先确认形态", desc: "手持小设备别提脚踏 / 桌面外挂；硬件脑暴前先确认形态再发散", file: "feedback_match_form_factor.md", repo: "2026-05-16-match-form-factor.md", cat: "hardware" },
+  { title: "输入器件优先机械结构", desc: "硬件输入方式机械按键 / 旋钮 / 滚轮优先于电容触控，触控不是禁但降权", file: "feedback_prefer_mechanical_inputs.md", repo: "2026-05-16-prefer-mechanical-inputs.md", cat: "hardware" },
+  { title: "中文期刊稿件——调性 ≠ 质量", desc: "「沙比 / 假到死」是描述调性，不是让你真写烂稿；要能交稿", file: "feedback_chinese_writing_quality_over_satire.md", repo: "2026-05-16-chinese-writing-quality.md", cat: "writing" },
+  { title: "Vibe 笔项目进度（暂停中）", desc: "笔形外设 DIY 进度档案，已锁形态 / 模块 / 偏好；等学完互动模块再回来定 BOM", file: "project_vibe_pen.md", repo: "2026-05-16-project-vibe-pen.md", cat: "project" },
+  { title: "讲解东西前先列关联学科", desc: "用户问「讲讲 X」/「X 是什么」时，回答开头先列关联学科再讲正文", file: "feedback_explain_disciplines_first.md", repo: "2026-05-11-explanation-format-disciplines-first.md", cat: "format" },
+  { title: "PowerShell 流程要具体到按键", desc: "每次涉及 PowerShell 命令，分步说按哪个键、点哪里，直到用户说「不用了」", file: "feedback_powershell_explicit_steps.md", repo: "2026-05-16-powershell-explicit-steps.md", cat: "format" },
+  { title: "HTML 每次更新都要附链接", desc: "写 / 改 HTML 后必须在回复里给可点击的 file:/// 本地链接，不只说路径", file: "feedback_html_link_required.md", repo: "2026-05-16-html-link-required.md", cat: "format" },
+  { title: "dev server 项目每次更新后推 URL", desc: "改 web 项目（Astro / Next / Vite 等）后回复必须贴 http://localhost:端口/ 让用户能刷新看", file: "feedback_dev_server_url_push.md", repo: "2026-05-16-dev-server-url-push.md", cat: "format" },
+  { title: "钥匙玩校 · 详情页长文阅读 UX 清单", desc: "9 条阅读体验设计要点：进度条 / TOC / 阅读时间 / 折叠 / 锚点 / 懒加载 / 深色 / 字号 / 续读", file: "project_kiidschool_detail_page_ux.md", repo: "2026-05-16-project-kiidschool-detail-page-ux.md", cat: "project" },
+  { title: "美工需求交给 Codex + image-2", desc: "视觉 / 配图 / 海报 / icon 需求别用 emoji 或 ASCII 凑数，提议用户去 Codex 用 image-2 做真图", file: "feedback_handoff_visual_to_codex.md", repo: "2026-05-16-handoff-visual-to-codex.md", cat: "visual" },
+  { title: "新 memory 条目要双写到 habit 仓库", desc: "每次加 memory 同步往 chichu_habit 仓库推一份独立文档；凭据类例外", file: "feedback_dual_write_memory_to_habit_repo.md", repo: "2026-05-16-dual-write-memory-to-habit-repo.md", cat: "workflow" },
+  { title: "嬤法大逃杀（mofazhusha）项目状态", desc: "Railway URL https://mofazhusha-production.up.railway.app/，每次 push 后必带预览链接；不要再让用户提醒", file: "project_mofazhusha.md", repo: null, cat: "project", badge: "本地" },
+  { title: "中文语音输入 → CapsWriter-Offline", desc: "装在 C:\\Users\\david\\CapsWriter，按住 CapsLock 说话；Whispering 中文翻车已踩坑别再走", file: "reference_voice_input_capswriter.md", repo: null, cat: "tools", badge: "本地" },
+  { title: "个人用素材不要加肖像权 hedge", desc: "私人桌面素材引真人时正向描述演员名 + 越像越好，不写「避免演员脸」", file: "feedback_no_likeness_hedge_for_personal.md", repo: null, cat: "visual", badge: "本地" },
+  { title: "小尺寸 sprite 优先半身 / 胸像构图", desc: "≤256px 默认 bust，可非正方画布，可越出 canvas 边做 4th wall", file: "feedback_small_sprite_use_bust_framing.md", repo: null, cat: "visual", badge: "本地" },
+  { title: "项目名 + 昵称选择性进 CapsWriter 热词", desc: "只为高信号项目加 hot.txt：有 project_*.md / 30 天内活跃 / 明确要求 / 重命名 session 对应项目；一次性话题默认不加", file: "feedback_project_names_to_capswriter_hotwords.md", repo: null, cat: "workflow", badge: "本地" },
+  { title: "lando-teardown HTML 与 cookbook 仓库保持同构", desc: "lando HTML 改了就跑 split_to_cookbook.py 同步 web-anim-cookbook，每次都推两个仓库给两个链接", file: "feedback_lando_cookbook_sync.md", repo: null, cat: "workflow", badge: "本地" },
+  { title: "IMU 敲击交互在用户经验里不灵敏", desc: "别再推荐敲击 / 敲背 / 翻转这类 IMU 软件手势；老实加机械按键", file: "feedback_imu_knock_unreliable.md", repo: null, cat: "hardware", badge: "本地" },
+  { title: "讲解 / 教学 HTML 要图片多文字少", desc: "教学类 HTML 视觉优先：卡片网格 + SVG 简笔 + 条形图，少用大段文字和纯表格", file: "feedback_explain_html_visual_heavy.md", repo: null, cat: "format", badge: "本地" },
+  { title: "EPUB ADHD Remixer 项目", desc: "本地工具：EPUB → Claude 加钩子 + 回忆 + 减速带 → send-to-kindle，对治走神", file: "project_epub_remixer.md", repo: null, cat: "project", badge: "本地" },
+  { title: "URL 后面紧贴中文会被吃进去 → 404", desc: "写预览链接时 URL 单独一行或留双空格，中文括号 / 箭头紧贴会被自动识别成路径", file: "feedback_url_separator.md", repo: null, cat: "format", badge: "本地" },
+  { title: "Kindle Highlight Sync 项目", desc: "多用户 web：bookmarklet 在用户浏览器抓 Amazon notebook 高亮 POST 回来，零账号密码", file: "project_kindle_highlight_sync.md", repo: null, cat: "project", badge: "本地" },
+  { title: "第三方账号同步首选 bookmarklet", desc: "抓三方平台数据：bookmarklet / 插件优先；不存账号密码或 cookies，会触 2FA / captcha / 法律责任", file: "feedback_bookmarklet_over_password.md", repo: null, cat: "workflow", badge: "本地" }
+];
+
+const state = { activeCat: "all", search: "" };
+
+function countByCat() {
+  const counts = {};
+  for (const k of Object.keys(CATEGORIES)) counts[k] = 0;
+  for (const h of habits) counts[h.cat] = (counts[h.cat] || 0) + 1;
+  return counts;
+}
+
+function renderChart() {
+  const counts = countByCat();
+  const max = Math.max(...Object.values(counts));
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  for (const [key, count] of sorted) {
+    const cat = CATEGORIES[key];
+    const row = document.createElement('div');
+    row.className = 'chart-row';
+    row.dataset.cat = key;
+    row.innerHTML = `
+      <div class="chart-label"><span class="dot" style="background:${cat.color}"></span>${cat.label}</div>
+      <div class="chart-bar-wrap"><div class="chart-bar" style="width:${(count/max)*100}%; background:${cat.color}"></div></div>
+      <div class="chart-count">${count}</div>
+    `;
+    row.addEventListener('click', () => setCategory(key === state.activeCat ? "all" : key));
+    chart.appendChild(row);
+  }
+  // mark active
+  if (state.activeCat !== "all") {
+    chart.querySelectorAll('.chart-row').forEach(r => {
+      r.classList.toggle('active', r.dataset.cat === state.activeCat);
+    });
+  }
+}
+
+function renderChips() {
+  const chips = document.getElementById('chips');
+  chips.innerHTML = '';
+  const all = document.createElement('button');
+  all.className = 'chip' + (state.activeCat === "all" ? " active" : "");
+  all.textContent = `全部 (${habits.length})`;
+  all.addEventListener('click', () => setCategory("all"));
+  chips.appendChild(all);
+  const counts = countByCat();
+  for (const [key, cat] of Object.entries(CATEGORIES)) {
+    if (!counts[key]) continue;
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (state.activeCat === key ? " active" : "");
+    btn.innerHTML = `<span class="dot" style="background:${cat.color}"></span>${cat.label} (${counts[key]})`;
+    btn.addEventListener('click', () => setCategory(key === state.activeCat ? "all" : key));
+    chips.appendChild(btn);
+  }
+}
+
+function renderCards() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  const q = state.search.trim().toLowerCase();
+  let visible = 0;
+  for (const h of habits) {
+    const matchCat = state.activeCat === "all" || h.cat === state.activeCat;
+    const matchQ = !q || h.title.toLowerCase().includes(q) || h.desc.toLowerCase().includes(q);
+    if (!matchCat || !matchQ) continue;
+    visible++;
+    const cat = CATEGORIES[h.cat];
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.style.setProperty('--card-color', cat.color);
+    const repoLink = h.repo
+      ? `<a class="card-link" href="${REPO_BASE}${h.repo}" target="_blank" rel="noopener">仓库 →</a>`
+      : `<span class="card-badge">${h.badge || '本地'}</span>`;
+    card.innerHTML = `
+      <div class="card-cat">${cat.label}</div>
+      <h3>${h.title}</h3>
+      <p>${h.desc}</p>
+      <div class="card-footer">
+        <span class="card-file" title="${h.file}">${h.file}</span>
+        ${repoLink}
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+  if (visible === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = '没有匹配项。换个关键词或清掉过滤试试。';
+    grid.appendChild(empty);
+  }
+}
+
+function setCategory(key) {
+  state.activeCat = key;
+  renderChart();
+  renderChips();
+  renderCards();
+}
+
+function setSearch(val) {
+  state.search = val;
+  renderCards();
+}
+
+// Theme toggle
+const themeToggle = document.getElementById('theme-toggle');
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    themeToggle.textContent = '○';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeToggle.textContent = '●';
+  }
+  localStorage.setItem('habit-theme', theme);
+}
+const savedTheme = localStorage.getItem('habit-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+applyTheme(savedTheme);
+themeToggle.addEventListener('click', () => {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+
+// Search
+document.getElementById('search').addEventListener('input', e => setSearch(e.target.value));
+
+// Init
+document.getElementById('total-count').textContent = habits.length;
+document.getElementById('cat-count').textContent = Object.keys(CATEGORIES).length;
+renderChart();
+renderChips();
+renderCards();
+</script>
+</body>
+</html>
