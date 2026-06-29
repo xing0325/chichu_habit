@@ -36,7 +36,18 @@ groups.ps1 -Import               # 3. 再把分组/收藏写回（此时 session
    ↓ 重开 Claude
 ```
 
-**如果已经换号、分组已经丢、且事先没 Export 过 → 救不回了**（旧值已被 compaction 清除）。这时要**如实告诉 chichu 救不回，别假装能恢复**；但 session 和收藏通常还在，让他手动重建分组（拖拽即可），并提醒下次换号先 Export。
+**如果已经换号、分组已经丢、且事先没 Export 过**——别急着说救不回，**先查 Windows 卷影副本（VSS）**！2026-06-29 实战就是这么救回来的：本以为不可恢复（live 库和所有 .ldb 都被 compaction 清空了），结果 C 盘有 System Restore 的卷影副本，换号前那份里 `%APPDATA%\Roaming\Claude\Local Storage` 完整保留着老号的 11 个分组 + 51 个 session 归属，原样捞回写回。
+
+### VSS 恢复方法（救分组的杀手锏）
+
+1. `vssadmin list shadows` / `Get-CimInstance Win32_ShadowCopy` 列卷影副本——**要管理员权限**。用 `Start-Process pwsh -Verb RunAs ...` 提权（弹 UAC，让 chichu 点确认）。
+2. 拿到每个副本的 `DeviceObject`（形如 `\\?\GLOBALROOT\Device\HarddiskVolumeShadowCopyN`）。
+3. **坑：PowerShell 直接走这个原始设备路径 Test-Path 会假阴性。** 必须先建符号链接：`mklink /d C:\link "<DeviceObject>\"`（**target 末尾要带反斜杠**），再通过 `C:\link\Users\<用户>\AppData\Roaming\Claude\Local Storage` 访问。
+4. 把那份 Local Storage 拷出来，用 `migrate-groups.mjs export` 读 `dframe-store.customGroups`——非空就是中奖，`import` 写回即可。
+5. 多个卷影副本挑**换号之前**那个。有的副本 `.log` 在快照瞬间正被写，会报 `Corruption: checksum mismatch`，换另一个副本。
+6. 写回前确认分组归属的 session ID 跟迁过来的库对得上（对得上才会渲染、且不被再次对账清空）。
+
+只有**确实没有任何换号前的卷影副本**时，才让 chichu 手动重建。手动重建时 session/收藏都在，拖拽即可，并提醒以后换号先 `-Export`。
 
 ## 工具（已进仓库 v1.1）
 
